@@ -564,66 +564,33 @@ public class NodeTest {
     }
 
     /**
-     * splitAfter uses siblingIndex() (the lazy-revalidating method) rather than
-     * the raw siblingIndex field.  Calling splitAfter twice on the same parent
-     * within a single operation — as Renderer.promoteQuote does — causes
-     * parentNode.invalidateChildren() after the first call, which marks stored
-     * sibling indices as stale.  The second call must therefore revalidate before
-     * using the index, otherwise addChildren(siblingIndex + 1, …) can receive an
-     * index that is out of range for the parent's child list.
-     *
-     * The structure used here mirrors the promoteQuote pattern:
-     *   outer > [before, inner]   inner > [a, target, c]
-     * splitAfter(target) on inner → outer gains a clone after inner,
-     *   outer.invalidateChildren() is called.
-     * splitAfter(a) on inner (the "split before target" step) must then insert
-     *   another clone at the correct position despite the stale index.
+     * splitAfter must use siblingIndex() (the lazy-revalidating method), not the raw
+     * siblingIndex field.  If a sibling before this node is removed, the parent's child
+     * indices are invalidated and the raw field is stale (too high).  Using the raw field
+     * would cause addChildren to insert at an out-of-range position.
      */
-    @Test public void splitAfterTwiceOnSameParentAfterInvalidation() {
+    @Test public void splitAfterWithStaleSiblingIndex() {
         Document doc = Jsoup.parse(
-            "<outer><before/><inner><a/><target/><c/></inner></outer>");
-        Element outer  = doc.select("outer").first();
-        Element before = doc.select("before").first();
-        Element inner  = doc.select("inner").first();
-        Element a      = doc.select("a").first();
-        Element target = doc.select("target").first();
-        Element c      = doc.select("c").first();
+            "<outer><before/><inner><a/><b/></inner></outer>", "", xmlParser());
+        Element outer = doc.select("outer").first();
+        Element inner = doc.select("inner").first();
+        Element a     = doc.select("a").first();
 
-        // Verify initial structure.
         assertEquals(2, outer.childNodeSize());
-        assertEquals(3, inner.childNodeSize());
-        assertEquals(1, inner.siblingIndex());   // inner is at position 1 in outer
+        assertEquals(1, inner.siblingIndex()); // inner is at position 1
 
-        // First split: move c (and anything after target) into a clone of inner.
-        inner.splitAfter(target);
-        // outer now has [before, inner, inner-clone]; inner has [a, target].
-        assertEquals(3, outer.childNodeSize());
-        assertEquals(2, inner.childNodeSize());
-        // outer.childNodes is now invalid (invalidateChildren was called).
+        // Remove the sibling before inner: inner.siblingIndex is now stale (still 1, should be 0)
+        doc.select("before").first().remove();
+        assertEquals(1, outer.childNodeSize());
 
-        // Second split: move target (and everything after a) into another clone.
-        // This is the call that crashed before the fix because splitAfter used
-        // the raw siblingIndex field rather than the lazy-revalidating method.
-        inner.splitAfter(a);                     // must not throw
-        // outer now has [before, inner, inner-clone2, inner-clone1].
-        assertEquals(4, outer.childNodeSize());
-        assertEquals(1, inner.childNodeSize());  // inner keeps only [a]
+        // splitAfter must revalidate before inserting the clone
+        inner.splitAfter(a);
+        assertEquals(2, outer.childNodeSize()); // [inner, clone]
+        assertEquals(1, inner.childNodeSize()); // inner keeps [a]
         assertEquals(a, inner.child(0));
-
-        // inner-clone2 holds [target]; inner-clone1 holds [c].
-        Element clone2 = (Element) inner.nextSibling();
-        Element clone1 = (Element) clone2.nextSibling();
-        assertNotNull(clone2);
-        assertNotNull(clone1);
-        assertEquals(1, clone2.childNodeSize());
-        assertEquals(target, clone2.child(0));
-        assertEquals(1, clone1.childNodeSize());
-        assertEquals(c, clone1.child(0));
-
-        // All four children of outer share the same parent.
-        assertEquals(outer, before.parent());
-        assertEquals(outer, inner.parent());
-        assertEquals(outer, clone2.parent());
-        assertEquals(outer, clone1.parent());
+        Element clone = (Element) inner.nextSibling();
+        assertNotNull(clone);
+        assertEquals(1, clone.childNodeSize()); // clone has [b]
     }
+
 }
