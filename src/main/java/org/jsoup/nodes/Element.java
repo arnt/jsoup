@@ -14,6 +14,8 @@ import org.jsoup.select.NodeTraversor;
 import org.jsoup.select.NodeVisitor;
 import org.jsoup.select.QueryParser;
 import org.jsoup.select.Selector;
+import org.jsoup.text.Region;
+import org.jsoup.text.Regions;
 
 import javax.annotation.Nullable;
 import java.io.IOException;
@@ -1600,6 +1602,24 @@ public class Element extends Node {
         return NodeUtils.outputSettings(this).prettyPrint() ? html.trim() : html;
     }
 
+    /**
+     *  Return the {@link Regions} whose text match needle. Matching
+     *  is as for {@link org.jsoup.Region#findNext()}.
+     */
+    public Regions find(final String needle) {
+        Regions result = new Regions();
+        Region r = Region.find(needle, this, this);
+        while(r != null) {
+            result.add(r);
+            r.splitTextNodes();
+            r = r.findNext(needle, this);
+        }
+        return result;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public <T extends Appendable> T html(T appendable) {
         final int size = childNodes.size();
