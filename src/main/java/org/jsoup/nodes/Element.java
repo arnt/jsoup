@@ -17,6 +17,8 @@ import org.jsoup.select.NodeVisitor;
 import org.jsoup.select.Nodes;
 import org.jsoup.select.Selector;
 import org.jspecify.annotations.Nullable;
+import org.jsoup.text.Region;
+import org.jsoup.text.Regions;
 
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
@@ -1761,9 +1763,9 @@ public class Element extends Node implements Iterable<Element> {
      * @return set of classnames, empty if no class attribute
      */
     public Set<String> classNames() {
-    	String[] names = ClassSplit.split(className());
-    	Set<String> classNames = new LinkedHashSet<>(Arrays.asList(names));
-    	classNames.remove(""); // if classNames() was empty, would include an empty class
+        String[] names = ClassSplit.split(className());
+        Set<String> classNames = new LinkedHashSet<>(Arrays.asList(names));
+        classNames.remove(""); // if classNames() was empty, would include an empty class
 
         return classNames;
     }
@@ -1966,6 +1968,25 @@ public class Element extends Node implements Iterable<Element> {
         return NodeUtils.outputSettings(this).prettyPrint() ? html.trim() : html;
     }
 
+    /**
+     *  Return the {@link Regions} whose text match needle. Matching
+     *  is as for {@link org.jsoup.Region#findNext()}.
+     */
+    public Regions find(final String needle) {
+        if (needle == null || needle.isEmpty()) return new Regions();
+        Regions result = new Regions();
+        Region r = Region.find(needle, this, this);
+        while(r != null) {
+            result.add(r);
+            r.splitTextNodes();
+            r = r.findNext(needle, this);
+        }
+        return result;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public <T extends Appendable> T html(T accum) {
         Node child = firstChild();
