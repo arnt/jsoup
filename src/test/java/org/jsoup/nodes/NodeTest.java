@@ -195,6 +195,9 @@ public class NodeTest {
 
         doc.select("b").first().after("<i>five</i>");
         assertEquals("<p>One <b>two</b><i>five</i><em>four</em> three</p>", doc.body().html());
+
+        doc.select("p").first().after("<p>six</p>");
+        assertEquals("<p>One <b>two</b><i>five</i><em>four</em> three</p>\n<p>six</p>", doc.body().html());
     }
 
     @Test public void unwrap() {
@@ -316,5 +319,51 @@ public class NodeTest {
         Attributes attributes = new Attributes();
         attributes.put("value", "bar");
         return attributes;
+    }
+
+    @Test public void splits() {
+        Document doc =
+            org.jsoup.Jsoup.parse("<div><b>f</b><i>o</i><u>o</u></div>");
+        Element div = doc.select("div").first();
+        assertEquals(3, div.childNodeSize());
+        assertNull(div.nextSibling());
+        Element body = div.parent();
+        assertEquals(1, body.childNodeSize());
+
+        Element b = doc.select("b").first();
+        Element i = doc.select("i").first();
+        Element u = doc.select("u").first();
+
+        div.splitAfter(u);
+        assertEquals(1, body.childNodeSize());
+        assertEquals(body, div.parent());
+
+        div.splitAfter(body);
+        assertEquals(1, body.childNodeSize());
+        assertEquals(body, div.parent());
+
+        assertEquals(1, i.siblingIndex());
+
+        div.splitAfter(i);
+        assertEquals(2, div.childNodeSize());
+        assertEquals(div, b.parent());
+        assertEquals(div, i.parent());
+
+        Element udiv = div.nextElementSibling();
+        assertNotNull(udiv);
+        assertEquals(body, div.parent());
+        assertEquals(body, udiv.parent());
+        assertEquals(div, udiv.previousElementSibling());
+        assertEquals(2, body.childNodeSize());
+        assertEquals(1, udiv.childNodeSize());
+        assertEquals(u, udiv.child(0));
+        assertEquals(udiv, u.parent());
+
+        div.splitAfter(b);
+        assertEquals(1, div.childNodeSize());
+        assertEquals(3, body.childNodeSize());
+        assertEquals(div.nextElementSibling(), i.parent());
+        assertEquals(udiv.previousElementSibling(), i.parent());
+        assertEquals(body.child(1), i.parent());
     }
 }

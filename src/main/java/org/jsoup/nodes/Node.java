@@ -702,6 +702,31 @@ public abstract class Node implements Cloneable {
     }
 
     /**
+     *  Split this node in two, leaving both as children of the same
+     *  parent and all children of this node in one of the two.
+     *  Children from 0-child inclusive are left in this Node,
+     *  children after child are moved to the new Node, which is this
+     *  Node's {@link Node#nextSibling()}.
+     *
+     *  Do nothing if child is the last child.
+     */
+
+    public void splitAfter(Node child) {
+        List<Node> children = ensureChildNodes();
+        int i = children.indexOf(child);
+        if(i < 0 || i == children.size() - 1)
+            return;
+
+        Node clone = shallowClone();
+        if(parentNode != null)
+            parentNode.addChildren(siblingIndex + 1, clone);
+        children = children.subList(i+1, children.size());
+        Node[] tmp = new Node[children.size()];
+        clone.addChildren(children.toArray(tmp));
+    }
+
+
+    /**
      * Create a stand-alone, deep copy of this node, and all of its children. The cloned node will have no siblings or
      * parent node. As a stand-alone object, any changes made to the clone or any of its children will not impact the
      * original node.
@@ -774,19 +799,19 @@ public abstract class Node implements Cloneable {
 
         public void head(Node node, int depth) {
             try {
-				node.outerHtmlHead(accum, depth, out);
-			} catch (IOException exception) {
-				throw new SerializationException(exception);
-			}
+                                node.outerHtmlHead(accum, depth, out);
+                        } catch (IOException exception) {
+                                throw new SerializationException(exception);
+                        }
         }
 
         public void tail(Node node, int depth) {
             if (!node.nodeName().equals("#text")) { // saves a void hit.
-				try {
-					node.outerHtmlTail(accum, depth, out);
-				} catch (IOException exception) {
-					throw new SerializationException(exception);
-				}
+                                try {
+                                        node.outerHtmlTail(accum, depth, out);
+                                } catch (IOException exception) {
+                                        throw new SerializationException(exception);
+                                }
             }
         }
     }
