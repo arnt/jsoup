@@ -622,7 +622,7 @@ public abstract class Node implements Cloneable {
         nodes.addAll(index, Arrays.asList(children));
         ((Element) this).invalidateChildren();
     }
-    
+
     protected void reparentChild(Node child) {
         child.setParentNode(this);
     }
@@ -943,6 +943,30 @@ public abstract class Node implements Cloneable {
         if (o == null || getClass() != o.getClass()) return false;
 
         return this.outerHtml().equals(((Node) o).outerHtml());
+    }
+
+    /**
+     *  Split this node in two, leaving both as children of the same
+     *  parent and all children of this node in one of the two.
+     *  Children from 0-child inclusive are left in this Node,
+     *  children after child are moved to the new Node, which is this
+     *  Node's {@link Node#nextSibling()}.
+     *
+     *  Do nothing if child is the last child.
+     */
+
+    public void splitAfter(Node child) {
+        List<Node> children = ensureChildNodes();
+        int i = children.indexOf(child);
+        if(i < 0 || i == children.size() - 1)
+            return;
+
+        Node clone = shallowClone();
+        if(parentNode != null)
+            parentNode.addChildren(siblingIndex() + 1, clone);
+        children = children.subList(i+1, children.size());
+        Node[] tmp = new Node[children.size()];
+        clone.addChildren(children.toArray(tmp));
     }
 
     /**
